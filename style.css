@@ -84,6 +84,10 @@ body.dark-theme .container {
     box-shadow: 0 4px 6px rgba(0,0,0,0.4);
 }
 
+body.dark-theme .container a {
+    color: #4493f8;
+}
+
 body.dark-theme .toolbar {
     background-color: #161b22;
     color: #c9d1d9;
@@ -240,6 +244,15 @@ body.dark-theme .icon-btn:hover {
     padding: 30px 40px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.container a {
+    color: #0969da;
+    text-decoration: none;
+}
+
+.container a:hover {
+    text-decoration: underline;
 }
 
 img {
