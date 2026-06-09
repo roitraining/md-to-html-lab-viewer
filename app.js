@@ -136,6 +136,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            // Make all links open in a new tab
+            const links = contentDiv.querySelectorAll('a');
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                // Only target external URLs, ignore local hash links used for down-page jumping
+                if (href && !href.startsWith('#')) {
+                    link.setAttribute('target', '_blank');
+                    link.setAttribute('rel', 'noopener noreferrer');
+                }
+            });
+
             // Add Copy buttons to code blocks
             const preBlocks = contentDiv.querySelectorAll('pre');
             preBlocks.forEach(pre => {
