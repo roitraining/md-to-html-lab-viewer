@@ -13,6 +13,7 @@
     <header class="toolbar">
         <button id="menu-toggle" class="hamburger" aria-label="Menu">&#9776;</button>
         <div class="toolbar-title">Lab Viewer</div>
+        <button id="open-lab-btn" class="text-btn" type="button" title="Open a lab from GitHub">Open</button>
         <div class="theme-controls">
             <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme" title="Toggle Theme">🌙</button>
         </div>
@@ -31,7 +32,26 @@
     </nav>
 
     <div id="content" class="container">
-        <p>Loading lab...</p>
+        <p class="muted-prompt">Open a lab from GitHub to get started.</p>
+    </div>
+
+    <div id="open-lab-modal" class="modal-overlay" hidden aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="open-lab-title">
+            <div class="modal-header">
+                <h2 id="open-lab-title">Open Lab</h2>
+                <button type="button" id="open-lab-close" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-help">Paste a GitHub URL to a lab folder or Markdown file (for example <code>…/labs/lab-01-…</code> or <code>…/README.md</code>).</p>
+                <label class="modal-label" for="github-lab-url">GitHub URL</label>
+                <input type="url" id="github-lab-url" class="modal-text-input" placeholder="https://github.com/owner/repo/tree/main/labs/lab-01-…" autocomplete="off" spellcheck="false">
+                <div id="open-lab-status" class="modal-status" role="status" aria-live="polite"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="open-lab-cancel" class="btn-secondary">Cancel</button>
+                <button type="button" id="open-lab-submit" class="btn-primary">Open</button>
+            </div>
+        </div>
     </div>
 
     <!-- Marked.js for Markdown parsing -->
@@ -39,6 +59,6 @@
     <!-- Highlight.js for Code syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <!-- App Logic -->
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
 </body>
 </html>
