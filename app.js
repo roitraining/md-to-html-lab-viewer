@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!/\.(md|markdown)$/i.test(labUrl)) {
                 if (!labUrl.endsWith('/')) labUrl += '/';
-                labUrl += 'README.md';
+                labUrl += 'lab.md';
             }
         }
 

@@ -10,4 +10,4 @@ This repository is the **lab viewer** (runtime). Lab authoring skills and instru
 
 **[roitraining/roi-course-authoring-template](https://github.com/roitraining/roi-course-authoring-template)**
 
-Use that template to write labs (`labs/lab-NN-slug/README.md`). Do not maintain the Lab Generator skill in this viewer repo.
+Use that template to write labs (`labs/lab-NN-slug/lab.md`). Do not maintain the Lab Generator skill in this viewer repo.
