@@ -49,6 +49,66 @@ document.addEventListener('DOMContentLoaded', () => {
         langPrefix: 'hljs language-'
     });
 
+    const EXPAND_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/></svg>`;
+    const RESTORE_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/></svg>`;
+
+    function setImageZoomState(wrap, expanded) {
+        const btn = wrap.querySelector('.lab-image-zoom-btn');
+        const img = wrap.querySelector('img');
+        wrap.classList.toggle('is-expanded', expanded);
+        if (!btn) return;
+        const alt = img && img.alt ? img.alt : '';
+        if (expanded) {
+            btn.innerHTML = RESTORE_ICON;
+            btn.title = 'Restore image';
+            btn.setAttribute('aria-label', alt ? `Restore image: ${alt}` : 'Restore image');
+        } else {
+            btn.innerHTML = EXPAND_ICON;
+            btn.title = 'Expand image';
+            btn.setAttribute('aria-label', alt ? `Expand image: ${alt}` : 'Expand image');
+        }
+    }
+
+    function collapseExpandedLabImages(exceptWrap = null) {
+        contentDiv.querySelectorAll('.lab-image-wrap.is-expanded').forEach((wrap) => {
+            if (exceptWrap && wrap === exceptWrap) return;
+            setImageZoomState(wrap, false);
+        });
+    }
+
+    function setupLabImageZoom() {
+        contentDiv.querySelectorAll('img').forEach((img) => {
+            if (img.closest('.lab-image-wrap')) return;
+
+            const wrap = document.createElement('div');
+            wrap.className = 'lab-image-wrap';
+            img.parentNode.insertBefore(wrap, img);
+            wrap.appendChild(img);
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'lab-image-zoom-btn';
+            btn.innerHTML = EXPAND_ICON;
+            btn.title = 'Expand image';
+            btn.setAttribute('aria-label', img.alt ? `Expand image: ${img.alt}` : 'Expand image');
+            btn.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const willExpand = !wrap.classList.contains('is-expanded');
+                if (willExpand) collapseExpandedLabImages(wrap);
+                setImageZoomState(wrap, willExpand);
+            });
+            wrap.appendChild(btn);
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        if (!contentDiv.querySelector('.lab-image-wrap.is-expanded')) return;
+        event.preventDefault();
+        collapseExpandedLabImages();
+    });
+
     function setOpenStatus(message, isError = false) {
         if (!openLabStatus) return;
         openLabStatus.textContent = message || '';
@@ -156,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (cleanSrc.startsWith('/')) cleanSrc = cleanSrc.substring(1);
             img.src = baseUrl + cleanSrc;
         });
+        setupLabImageZoom();
 
         contentDiv.querySelectorAll('a').forEach((link) => {
             const href = link.getAttribute('href');

@@ -451,19 +451,85 @@ body.dark-theme .icon-btn:hover {
     text-decoration: underline;
 }
 
-.container img {
+.lab-image-wrap {
+    position: relative;
     display: block;
+    width: fit-content;
     max-width: 50%;
+    margin: 1.25em 0;
+}
+
+.lab-image-wrap img {
+    display: block;
+    max-width: 100%;
     width: auto;
     height: auto;
-    margin: 1.25em 0;
+    margin: 0;
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     box-sizing: border-box;
 }
 
-body.dark-theme .container img {
+.lab-image-wrap.is-expanded {
+    width: 100%;
+    max-width: 100%;
+}
+
+.lab-image-wrap.is-expanded img {
+    width: 100%;
+}
+
+body.dark-theme .lab-image-wrap img {
     border-color: #6e7681;
+}
+
+.lab-image-zoom-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.5);
+    color: rgba(15, 23, 42, 0.72);
+    opacity: 0.42;
+    cursor: pointer;
+    box-shadow: none;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.lab-image-wrap.is-expanded .lab-image-zoom-btn {
+    opacity: 0.7;
+}
+
+.lab-image-zoom-btn:hover,
+.lab-image-zoom-btn:focus-visible {
+    opacity: 0.95;
+    background: rgba(255, 255, 255, 0.92);
+    outline: none;
+}
+
+body.dark-theme .lab-image-zoom-btn {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(15, 23, 42, 0.45);
+    color: rgba(248, 250, 252, 0.85);
+}
+
+body.dark-theme .lab-image-zoom-btn:hover,
+body.dark-theme .lab-image-zoom-btn:focus-visible {
+    background: rgba(15, 23, 42, 0.8);
+}
+
+@media print {
+    .lab-image-zoom-btn {
+        display: none !important;
+    }
 }
 
 pre {
