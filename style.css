@@ -25,7 +25,15 @@ body {
     font-size: 24px;
     cursor: pointer;
     padding: 0;
+    margin-right: 12px;
+}
+
+.toolbar-logo {
+    display: block;
+    height: 28px;
+    width: auto;
     margin-right: 16px;
+    object-fit: contain;
 }
 
 .toolbar-title {

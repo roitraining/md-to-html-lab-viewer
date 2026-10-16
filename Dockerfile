@@ -6,6 +6,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Viewer app only (labs are loaded via ?lab= GitHub / raw Markdown URLs)
 COPY index.html app.js style.css /usr/share/nginx/html/
+COPY images/ /usr/share/nginx/html/images/
 
 EXPOSE 8080
 
