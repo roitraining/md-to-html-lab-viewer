@@ -593,8 +593,8 @@ body.dark-theme .lab-image-zoom-btn:focus-visible {
         border: 1px solid #d0d7de !important;
         padding: 14px 16px !important;
         white-space: pre-wrap !important;
-        overflow-wrap: anywhere !important;
-        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
         overflow-x: hidden !important;
         font-variant-ligatures: none !important;
         font-feature-settings: "liga" 0, "calt" 0 !important;
@@ -614,8 +614,8 @@ body.dark-theme .lab-image-zoom-btn:focus-visible {
     pre code,
     pre code.hljs {
         white-space: pre-wrap !important;
-        overflow-wrap: anywhere !important;
-        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
         overflow-x: visible !important;
     }
 
@@ -690,15 +690,15 @@ pre {
     overflow-x: hidden;
     position: relative;
     white-space: pre-wrap; /* Wraps the code */
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 pre code,
 pre code.hljs {
     white-space: pre-wrap !important;
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
     overflow-x: visible !important;
 }
 

@@ -356,9 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
         preBlocks.forEach((pre) => {
             const codeEl = pre.querySelector('code') || pre;
             const textRestores = expandTabsInElement(codeEl);
-            savedCodeState.push({
-                textRestores
-            });
+            if (textRestores.length) {
+                savedCodeState.push({ textRestores });
+            }
         });
     }
 
