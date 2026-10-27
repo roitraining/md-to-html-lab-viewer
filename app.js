@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fontDecrease = document.getElementById('font-decrease');
     const fontIncrease = document.getElementById('font-increase');
     const themeToggle = document.getElementById('theme-toggle');
+    const exportDocxBtn = document.getElementById('export-docx-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     const openLabBtn = document.getElementById('open-lab-btn');
     const openLabModal = document.getElementById('open-lab-modal');
@@ -311,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (openLabBtn) openLabBtn.addEventListener('click', () => openOpenLabModal());
+    if (exportDocxBtn) exportDocxBtn.addEventListener('click', exportLabToDocx);
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', prepareAndPrintPdf);
     if (openLabClose) openLabClose.addEventListener('click', closeOpenLabModal);
     if (openLabCancel) openLabCancel.addEventListener('click', closeOpenLabModal);
@@ -420,6 +422,628 @@ document.addEventListener('DOMContentLoaded', () => {
             prepareAndPrintPdf();
         }
     });
+
+    const DOCX_ICON = exportDocxBtn ? exportDocxBtn.innerHTML : '';
+    let isExportingDocx = false;
+
+    const ALERT_COLORS = {
+        note: '0969DA',
+        tip: '1A7F37',
+        important: '8250DF',
+        warning: '9A6700',
+        caution: 'CF222E'
+    };
+
+    async function rasterizeImageToPng(img) {
+        const src = img.currentSrc || img.src;
+        if (!src) return null;
+
+        const isSvg = /\.svg(\?|#|$)/i.test(src) || /^data:image\/svg\+xml/i.test(src);
+
+        if (!isSvg) {
+            try {
+                const resp = await fetch(src, { mode: 'cors' });
+                if (resp.ok) {
+                    const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+                    if (contentType.includes('png') || contentType.includes('jpeg') || contentType.includes('jpg') || contentType.includes('gif')) {
+                        const buf = await resp.arrayBuffer();
+                        const type = contentType.includes('png')
+                            ? 'png'
+                            : (contentType.includes('gif') ? 'gif' : 'jpg');
+                        return {
+                            data: new Uint8Array(buf),
+                            type,
+                            width: img.naturalWidth || img.width || 560,
+                            height: img.naturalHeight || img.height || 320
+                        };
+                    }
+                }
+            } catch (_) {
+                // Fall back to canvas rasterization
+            }
+        }
+
+        return new Promise((resolve) => {
+            const probe = new Image();
+            probe.crossOrigin = 'anonymous';
+            probe.onload = () => {
+                try {
+                    const natW = probe.naturalWidth || probe.width || 600;
+                    const natH = probe.naturalHeight || probe.height || 360;
+                    const scale = 2;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(natW * scale);
+                    canvas.height = Math.round(natH * scale);
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(probe, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(async (blob) => {
+                        if (!blob) {
+                            resolve(null);
+                            return;
+                        }
+                        const buf = await blob.arrayBuffer();
+                        resolve({
+                            data: new Uint8Array(buf),
+                            type: 'png',
+                            width: natW,
+                            height: natH
+                        });
+                    }, 'image/png');
+                } catch (_) {
+                    resolve(null);
+                }
+            };
+            probe.onerror = () => resolve(null);
+            probe.src = src;
+        });
+    }
+
+    async function exportLabToDocx() {
+        if (isExportingDocx || !contentDiv || !window.docx) return;
+        isExportingDocx = true;
+        if (exportDocxBtn) {
+            exportDocxBtn.disabled = true;
+            exportDocxBtn.textContent = '⏳';
+        }
+
+        try {
+            const {
+                Document,
+                Packer,
+                Paragraph,
+                TextRun,
+                HeadingLevel,
+                Table,
+                TableRow,
+                TableCell,
+                WidthType,
+                BorderStyle,
+                ShadingType,
+                ImageRun,
+                ExternalHyperlink,
+                AlignmentType,
+                LevelFormat,
+                convertInchesToTwip
+            } = window.docx;
+
+            // Ensure all images in #content have absolute URLs and are loaded
+            const images = Array.from(contentDiv.querySelectorAll('img'));
+            images.forEach((img) => {
+                const src = img.getAttribute('src');
+                if (src) {
+                    try {
+                        img.src = new URL(src, window.location.href).href;
+                    } catch (_) {
+                        // Keep current src
+                    }
+                }
+            });
+
+            await Promise.all(images.map((img) => {
+                if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+                return new Promise((resolve) => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            }));
+
+            function buildInlineRuns(node, style = {}) {
+                const runs = [];
+                node.childNodes.forEach((child) => {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        const raw = child.nodeValue || '';
+                        const normalized = raw.replace(/\s+/g, ' ');
+                        if (!normalized) return;
+                        runs.push(new TextRun({
+                            text: normalized,
+                            bold: !!style.bold,
+                            italics: !!style.italics,
+                            font: style.code ? 'Consolas' : 'Calibri',
+                            size: style.size || (style.code ? 20 : 22),
+                            color: style.color || '24292F',
+                            shading: style.code
+                                ? { type: ShadingType.CLEAR, color: 'auto', fill: 'EFF1F3' }
+                                : undefined
+                        }));
+                        return;
+                    }
+                    if (child.nodeType !== Node.ELEMENT_NODE) return;
+
+                    const tag = child.tagName.toLowerCase();
+                    if (tag === 'button' || child.classList.contains('copy-btn') || child.classList.contains('lab-image-zoom-btn') || tag === 'svg') {
+                        return;
+                    }
+                    if (tag === 'br') {
+                        runs.push(new TextRun({ text: '', break: 1 }));
+                        return;
+                    }
+                    if (tag === 'strong' || tag === 'b') {
+                        runs.push(...buildInlineRuns(child, { ...style, bold: true }));
+                        return;
+                    }
+                    if (tag === 'em' || tag === 'i') {
+                        runs.push(...buildInlineRuns(child, { ...style, italics: true }));
+                        return;
+                    }
+                    if (tag === 'code') {
+                        const codeText = child.textContent || '';
+                        runs.push(new TextRun({
+                            text: codeText,
+                            bold: !!style.bold,
+                            italics: !!style.italics,
+                            font: 'Consolas',
+                            size: style.size ? Math.max(18, style.size - 2) : 20,
+                            color: style.color || '24292F',
+                            shading: { type: ShadingType.CLEAR, color: 'auto', fill: 'EFF1F3' }
+                        }));
+                        return;
+                    }
+                    if (tag === 'a') {
+                        const href = child.getAttribute('href') || '';
+                        const linkChildren = buildInlineRuns(child, {
+                            ...style,
+                            color: '0969DA'
+                        });
+                        if (href && /^https?:\/\//i.test(href) && linkChildren.length) {
+                            runs.push(new ExternalHyperlink({
+                                link: href,
+                                children: linkChildren
+                            }));
+                        } else {
+                            runs.push(...linkChildren);
+                        }
+                        return;
+                    }
+                    runs.push(...buildInlineRuns(child, style));
+                });
+                return runs;
+            }
+
+            function buildCodeBlockTable(preEl, indentTwip = 0) {
+                const codeEl = preEl.querySelector('code');
+                const rawText = (codeEl ? codeEl.textContent : preEl.textContent) || '';
+                const cleanText = rawText
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\r/g, '\n')
+                    .replace(/\t/g, '    ')
+                    .replace(/\n$/, '');
+
+                const lines = cleanText.split('\n');
+                const codeParagraphs = lines.map((lineText) => new Paragraph({
+                    spacing: { before: 0, after: 0, line: 260 },
+                    children: [
+                        new TextRun({
+                            text: lineText,
+                            font: 'Consolas',
+                            size: 19, // 9.5pt monospace so long lines fit comfortably and copy verbatim
+                            color: '1F2328'
+                        })
+                    ]
+                }));
+
+                return new Table({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    indent: indentTwip > 0 ? { size: indentTwip, type: WidthType.DXA } : undefined,
+                    margins: {
+                        top: 140,
+                        bottom: 140,
+                        left: 180,
+                        right: 180
+                    },
+                    rows: [
+                        new TableRow({
+                            cantSplit: true,
+                            children: [
+                                new TableCell({
+                                    shading: {
+                                        type: ShadingType.CLEAR,
+                                        color: 'auto',
+                                        fill: 'F6F8FA'
+                                    },
+                                    borders: {
+                                        top: { style: BorderStyle.SINGLE, size: 6, color: 'D0D7DE' },
+                                        bottom: { style: BorderStyle.SINGLE, size: 6, color: 'D0D7DE' },
+                                        left: { style: BorderStyle.SINGLE, size: 6, color: 'D0D7DE' },
+                                        right: { style: BorderStyle.SINGLE, size: 6, color: 'D0D7DE' }
+                                    },
+                                    children: codeParagraphs
+                                })
+                            ]
+                        })
+                    ]
+                });
+            }
+
+            async function buildImageParagraph(imgEl, indentTwip = 0) {
+                const asset = await rasterizeImageToPng(imgEl);
+                if (!asset) return null;
+
+                const maxW = 540;
+                const scale = asset.width > maxW ? maxW / asset.width : 1;
+                const width = Math.max(40, Math.round(asset.width * scale));
+                const height = Math.max(24, Math.round(asset.height * scale));
+
+                return new Paragraph({
+                    indent: indentTwip > 0 ? { left: indentTwip } : undefined,
+                    spacing: { before: 140, after: 180 },
+                    children: [
+                        new ImageRun({
+                            data: asset.data,
+                            type: asset.type,
+                            transformation: { width, height }
+                        })
+                    ]
+                });
+            }
+
+            async function buildAlertBlock(bqEl, indentTwip = 0) {
+                let alertType = null;
+                Object.keys(ALERT_COLORS).forEach((type) => {
+                    if (bqEl.classList.contains(`markdown-alert-${type}`)) {
+                        alertType = type;
+                    }
+                });
+                const borderColor = (alertType && ALERT_COLORS[alertType]) || 'D0D7DE';
+                const fillHex = alertType ? 'F8FAFC' : 'FFFFFF';
+
+                const cellChildren = [];
+                for (const child of Array.from(bqEl.children)) {
+                    if (child.classList.contains('markdown-alert-title')) {
+                        const label = child.textContent.trim() || (alertType ? alertType.toUpperCase() : 'Note');
+                        cellChildren.push(new Paragraph({
+                            spacing: { before: 40, after: 80 },
+                            children: [
+                                new TextRun({
+                                    text: label,
+                                    bold: true,
+                                    font: 'Calibri',
+                                    size: 22,
+                                    color: borderColor
+                                })
+                            ]
+                        }));
+                        continue;
+                    }
+                    const nested = await convertElement(child, { indentTwip: 0 });
+                    cellChildren.push(...nested);
+                }
+
+                if (!cellChildren.length) return [];
+
+                return [
+                    new Table({
+                        width: { size: 100, type: WidthType.PERCENTAGE },
+                        indent: indentTwip > 0 ? { size: indentTwip, type: WidthType.DXA } : undefined,
+                        margins: {
+                            top: 100,
+                            bottom: 100,
+                            left: 180,
+                            right: 160
+                        },
+                        rows: [
+                            new TableRow({
+                                cantSplit: true,
+                                children: [
+                                    new TableCell({
+                                        shading: {
+                                            type: ShadingType.CLEAR,
+                                            color: 'auto',
+                                            fill: fillHex
+                                        },
+                                        borders: {
+                                            left: { style: BorderStyle.SINGLE, size: 24, color: borderColor },
+                                            top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                                            bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                                            right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+                                        },
+                                        children: cellChildren
+                                    })
+                                ]
+                            })
+                        ]
+                    }),
+                    new Paragraph({ spacing: { before: 0, after: 120 }, children: [] })
+                ];
+            }
+
+            function buildMarkdownTable(tableEl, indentTwip = 0) {
+                const trEls = Array.from(tableEl.querySelectorAll('tr'));
+                if (!trEls.length) return [];
+
+                const rows = trEls.map((tr, rowIndex) => {
+                    const cells = Array.from(tr.querySelectorAll('th, td'));
+                    const isHeader = rowIndex === 0 && tr.querySelector('th');
+                    return new TableRow({
+                        tableHeader: !!isHeader,
+                        cantSplit: true,
+                        children: cells.map((cell) => new TableCell({
+                            shading: isHeader
+                                ? { type: ShadingType.CLEAR, color: 'auto', fill: 'EAECEF' }
+                                : (rowIndex % 2 === 0
+                                    ? { type: ShadingType.CLEAR, color: 'auto', fill: 'F6F8FA' }
+                                    : undefined),
+                            margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 4, color: 'D0D7DE' },
+                                bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D0D7DE' },
+                                left: { style: BorderStyle.SINGLE, size: 4, color: 'D0D7DE' },
+                                right: { style: BorderStyle.SINGLE, size: 4, color: 'D0D7DE' }
+                            },
+                            children: [
+                                new Paragraph({
+                                    spacing: { before: 20, after: 20 },
+                                    children: buildInlineRuns(cell, { bold: !!isHeader })
+                                })
+                            ]
+                        }))
+                    });
+                });
+
+                return [
+                    new Table({
+                        width: { size: 100, type: WidthType.PERCENTAGE },
+                        indent: indentTwip > 0 ? { size: indentTwip, type: WidthType.DXA } : undefined,
+                        rows
+                    }),
+                    new Paragraph({ spacing: { before: 0, after: 140 }, children: [] })
+                ];
+            }
+
+            async function convertListItem(liEl, listKind, level, itemNumber) {
+                const blocks = [];
+                const indentTwip = (level + 1) * 360;
+                const prefixText = listKind === 'ol' ? `${itemNumber}. ` : '• ';
+                let prefixUsed = false;
+
+                let inlineBucket = [];
+                async function flushInlineBucket() {
+                    if (!inlineBucket.length) return;
+                    const wrapper = document.createElement('span');
+                    inlineBucket.forEach((n) => wrapper.appendChild(n.cloneNode(true)));
+                    inlineBucket = [];
+                    const runs = buildInlineRuns(wrapper);
+                    if (!runs.length) return;
+                    const prefixRun = !prefixUsed
+                        ? [new TextRun({ text: prefixText, bold: listKind === 'ol', font: 'Calibri', size: 22, color: '24292F' })]
+                        : [];
+                    prefixUsed = true;
+                    blocks.push(new Paragraph({
+                        indent: { left: indentTwip, hanging: prefixRun.length ? 220 : 0 },
+                        spacing: { before: 60, after: 80 },
+                        children: [...prefixRun, ...runs]
+                    }));
+                }
+
+                for (const child of Array.from(liEl.childNodes)) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        if (child.nodeValue && child.nodeValue.trim()) {
+                            inlineBucket.push(child);
+                        }
+                        continue;
+                    }
+                    if (child.nodeType !== Node.ELEMENT_NODE) continue;
+
+                    const tag = child.tagName.toLowerCase();
+                    const isBlock = ['p', 'pre', 'blockquote', 'ul', 'ol', 'table', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag);
+                    if (!isBlock) {
+                        inlineBucket.push(child);
+                        continue;
+                    }
+
+                    await flushInlineBucket();
+
+                    if (tag === 'p') {
+                        const imgInP = child.querySelector('img');
+                        if (imgInP && child.textContent.trim() === '') {
+                            const imgPara = await buildImageParagraph(imgInP, indentTwip);
+                            if (imgPara) blocks.push(imgPara);
+                            continue;
+                        }
+                        const runs = buildInlineRuns(child);
+                        if (runs.length) {
+                            const prefixRun = !prefixUsed
+                                ? [new TextRun({ text: prefixText, bold: listKind === 'ol', font: 'Calibri', size: 22, color: '24292F' })]
+                                : [];
+                            prefixUsed = true;
+                            blocks.push(new Paragraph({
+                                indent: { left: indentTwip, hanging: prefixRun.length ? 220 : 0 },
+                                spacing: { before: 60, after: 80 },
+                                children: [...prefixRun, ...runs]
+                            }));
+                        }
+                        continue;
+                    }
+
+                    if (tag === 'ul' || tag === 'ol') {
+                        const subItems = Array.from(child.children).filter((c) => c.tagName && c.tagName.toLowerCase() === 'li');
+                        for (let idx = 0; idx < subItems.length; idx++) {
+                            const subBlocks = await convertListItem(subItems[idx], tag, level + 1, idx + 1);
+                            blocks.push(...subBlocks);
+                        }
+                        continue;
+                    }
+
+                    const converted = await convertElement(child, { indentTwip });
+                    if (converted.length) {
+                        blocks.push(...converted);
+                    }
+                }
+
+                await flushInlineBucket();
+                return blocks;
+            }
+
+            async function convertElement(el, options = {}) {
+                const indentTwip = options.indentTwip || 0;
+                const tag = el.tagName ? el.tagName.toLowerCase() : '';
+
+                if (!tag || tag === 'button' || tag === 'script' || tag === 'style') {
+                    return [];
+                }
+
+                if (/^h[1-6]$/.test(tag)) {
+                    const levelNum = parseInt(tag.substring(1), 10);
+                    const headingMap = {
+                        1: HeadingLevel.HEADING_1,
+                        2: HeadingLevel.HEADING_2,
+                        3: HeadingLevel.HEADING_3,
+                        4: HeadingLevel.HEADING_4,
+                        5: HeadingLevel.HEADING_5,
+                        6: HeadingLevel.HEADING_6
+                    };
+                    const sizeMap = { 1: 36, 2: 28, 3: 24, 4: 22, 5: 20, 6: 20 };
+                    return [
+                        new Paragraph({
+                            heading: headingMap[levelNum],
+                            keepNext: true,
+                            spacing: { before: levelNum === 1 ? 120 : 240, after: 120 },
+                            children: buildInlineRuns(el, {
+                                bold: true,
+                                size: sizeMap[levelNum],
+                                color: '003865'
+                            })
+                        })
+                    ];
+                }
+
+                if (tag === 'p') {
+                    const imgs = Array.from(el.querySelectorAll('img'));
+                    if (imgs.length && el.textContent.trim() === '') {
+                        const out = [];
+                        for (const img of imgs) {
+                            const p = await buildImageParagraph(img, indentTwip);
+                            if (p) out.push(p);
+                        }
+                        return out;
+                    }
+                    const runs = buildInlineRuns(el);
+                    const out = [];
+                    if (runs.length) {
+                        out.push(new Paragraph({
+                            indent: indentTwip > 0 ? { left: indentTwip } : undefined,
+                            spacing: { before: 60, after: 120 },
+                            children: runs
+                        }));
+                    }
+                    for (const img of imgs) {
+                        const p = await buildImageParagraph(img, indentTwip);
+                        if (p) out.push(p);
+                    }
+                    return out;
+                }
+
+                if (tag === 'div' && el.classList.contains('lab-image-wrap')) {
+                    const img = el.querySelector('img');
+                    if (!img) return [];
+                    const p = await buildImageParagraph(img, indentTwip);
+                    return p ? [p] : [];
+                }
+
+                if (tag === 'img') {
+                    const p = await buildImageParagraph(el, indentTwip);
+                    return p ? [p] : [];
+                }
+
+                if (tag === 'pre') {
+                    return [
+                        buildCodeBlockTable(el, indentTwip),
+                        new Paragraph({ spacing: { before: 0, after: 120 }, children: [] })
+                    ];
+                }
+
+                if (tag === 'blockquote') {
+                    return buildAlertBlock(el, indentTwip);
+                }
+
+                if (tag === 'table') {
+                    return buildMarkdownTable(el, indentTwip);
+                }
+
+                if (tag === 'ul' || tag === 'ol') {
+                    const out = [];
+                    const items = Array.from(el.children).filter((c) => c.tagName && c.tagName.toLowerCase() === 'li');
+                    for (let idx = 0; idx < items.length; idx++) {
+                        const itemBlocks = await convertListItem(items[idx], tag, 0, idx + 1);
+                        out.push(...itemBlocks);
+                    }
+                    return out;
+                }
+
+                const out = [];
+                for (const child of Array.from(el.children)) {
+                    const childBlocks = await convertElement(child, options);
+                    out.push(...childBlocks);
+                }
+                return out;
+            }
+
+            const docChildren = [];
+            for (const child of Array.from(contentDiv.children)) {
+                const blocks = await convertElement(child);
+                docChildren.push(...blocks);
+            }
+
+            const doc = new Document({
+                sections: [
+                    {
+                        properties: {
+                            page: {
+                                margin: {
+                                    top: convertInchesToTwip(0.6),
+                                    bottom: convertInchesToTwip(0.6),
+                                    left: convertInchesToTwip(0.65),
+                                    right: convertInchesToTwip(0.65)
+                                }
+                            }
+                        },
+                        children: docChildren
+                    }
+                ]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            const filename = `${document.title || 'lab'}.docx`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        } catch (err) {
+            console.error('Error exporting Word document:', err);
+            window.alert(`Failed to export Word document: ${err.message || err}`);
+        } finally {
+            if (exportDocxBtn) {
+                exportDocxBtn.disabled = false;
+                exportDocxBtn.innerHTML = DOCX_ICON;
+            }
+            isExportingDocx = false;
+        }
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const initialLab = urlParams.get('lab');

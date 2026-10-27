@@ -263,8 +263,17 @@ body.dark-theme .btn-secondary:hover {
     margin-right: 12px;
 }
 
+#export-docx-btn,
 #export-pdf-btn {
     margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#export-docx-btn:disabled {
+    opacity: 0.5;
+    cursor: wait;
 }
 
 .icon-btn {

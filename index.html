@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lab Viewer</title>
     <!-- Simple responsive styling -->
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
     <!-- Highlight.js CSS for code blocks -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 </head>
@@ -15,6 +15,13 @@
         <img src="images/roi-logo-with-name.png" alt="ROI Training" class="toolbar-logo">
         <div class="toolbar-title">Lab Viewer</div>
         <button id="open-lab-btn" class="text-btn" type="button" title="Open a lab from GitHub">Open</button>
+        <button id="export-docx-btn" class="icon-btn" type="button" aria-label="Export to Word (.docx)" title="Export to Word (.docx)">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="#185ABD" d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+                <path fill="#90CAF9" d="M14 2v6h6z"/>
+                <path fill="#FFFFFF" d="M7.3 11.2h1.6l1 4.6 1.1-4.6h1.5l1.1 4.6 1-4.6h1.6l-1.8 6.8h-1.6l-1.1-4.3-1.1 4.3H9.1L7.3 11.2z"/>
+            </svg>
+        </button>
         <button id="export-pdf-btn" class="icon-btn" type="button" aria-label="Print / Export to PDF" title="Print / Export to PDF">🖨️</button>
         <div class="theme-controls">
             <button id="theme-toggle" class="icon-btn" aria-label="Toggle Theme" title="Toggle Theme">🌙</button>
@@ -60,7 +67,9 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Highlight.js for Code syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- docx.js for Word (.docx) Export -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
     <!-- App Logic -->
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
 </body>
 </html>
