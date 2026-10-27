@@ -877,9 +877,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     if (tag === 'ul' || tag === 'ol') {
+                        const startAttr = tag === 'ol' ? parseInt(child.getAttribute('start') || '1', 10) : 1;
+                        const baseNum = Number.isNaN(startAttr) ? 1 : startAttr;
                         const subItems = Array.from(child.children).filter((c) => c.tagName && c.tagName.toLowerCase() === 'li');
                         for (let idx = 0; idx < subItems.length; idx++) {
-                            const subBlocks = await convertListItem(subItems[idx], tag, level + 1, idx + 1);
+                            const liVal = subItems[idx].hasAttribute('value') ? parseInt(subItems[idx].getAttribute('value'), 10) : NaN;
+                            const num = Number.isNaN(liVal) ? (baseNum + idx) : liVal;
+                            const subBlocks = await convertListItem(subItems[idx], tag, level + 1, num);
                             blocks.push(...subBlocks);
                         }
                         continue;
@@ -983,9 +987,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (tag === 'ul' || tag === 'ol') {
                     const out = [];
+                    const startAttr = tag === 'ol' ? parseInt(el.getAttribute('start') || '1', 10) : 1;
+                    const baseNum = Number.isNaN(startAttr) ? 1 : startAttr;
                     const items = Array.from(el.children).filter((c) => c.tagName && c.tagName.toLowerCase() === 'li');
                     for (let idx = 0; idx < items.length; idx++) {
-                        const itemBlocks = await convertListItem(items[idx], tag, 0, idx + 1);
+                        const liVal = items[idx].hasAttribute('value') ? parseInt(items[idx].getAttribute('value'), 10) : NaN;
+                        const num = Number.isNaN(liVal) ? (baseNum + idx) : liVal;
+                        const itemBlocks = await convertListItem(items[idx], tag, 0, num);
                         out.push(...itemBlocks);
                     }
                     return out;
