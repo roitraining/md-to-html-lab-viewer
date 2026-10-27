@@ -263,6 +263,10 @@ body.dark-theme .btn-secondary:hover {
     margin-right: 12px;
 }
 
+#export-pdf-btn {
+    margin-right: 8px;
+}
+
 .icon-btn {
     background: transparent;
     border: none;
@@ -535,8 +539,146 @@ body.dark-theme .lab-image-zoom-btn:focus-visible {
 }
 
 @media print {
+    @page {
+        size: letter;
+        margin: 0.5in;
+    }
+
+    html,
+    body,
+    body.dark-theme {
+        background-color: #ffffff !important;
+        color: #333333 !important;
+        font-size: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .toolbar,
+    .side-menu,
+    .modal-overlay,
+    .copy-btn,
     .lab-image-zoom-btn {
         display: none !important;
+    }
+
+    #content.container,
+    body.dark-theme #content.container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #333333 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    #content.container a,
+    body.dark-theme #content.container a {
+        color: #0969da !important;
+    }
+
+    pre,
+    body.dark-theme pre {
+        background-color: #f6f8fa !important;
+        color: #24292f !important;
+        border: 1px solid #d0d7de !important;
+        padding: 14px 16px !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        overflow-x: hidden !important;
+        font-variant-ligatures: none !important;
+        font-feature-settings: "liga" 0, "calt" 0 !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    code,
+    pre code,
+    pre code.hljs {
+        font-variant-ligatures: none !important;
+        font-feature-settings: "liga" 0, "calt" 0 !important;
+    }
+
+    pre code,
+    pre code.hljs {
+        white-space: pre-wrap !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        overflow-x: visible !important;
+    }
+
+    table,
+    blockquote,
+    .markdown-alert,
+    .lab-image-wrap,
+    img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        break-after: avoid;
+        page-break-after: avoid;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    p,
+    li {
+        orphans: 3;
+        widows: 3;
+    }
+
+    table th,
+    table td,
+    body.dark-theme table th,
+    body.dark-theme table td {
+        border-color: #d0d7de !important;
+        color: #333333 !important;
+    }
+
+    table tr:nth-child(2n),
+    body.dark-theme table tr:nth-child(2n) {
+        background-color: #f6f8fa !important;
+    }
+
+    blockquote,
+    body.dark-theme blockquote {
+        color: #57606a !important;
+        border-left-color: #d0d7de !important;
+    }
+
+    body.dark-theme .markdown-alert {
+        color: #333333 !important;
+    }
+    body.dark-theme .markdown-alert-note { border-left-color: #0969da !important; }
+    body.dark-theme .markdown-alert-note .markdown-alert-title { color: #0969da !important; }
+    body.dark-theme .markdown-alert-tip { border-left-color: #1a7f37 !important; }
+    body.dark-theme .markdown-alert-tip .markdown-alert-title { color: #1a7f37 !important; }
+    body.dark-theme .markdown-alert-important { border-left-color: #8250df !important; }
+    body.dark-theme .markdown-alert-important .markdown-alert-title { color: #8250df !important; }
+    body.dark-theme .markdown-alert-warning { border-left-color: #9a6700 !important; }
+    body.dark-theme .markdown-alert-warning .markdown-alert-title { color: #9a6700 !important; }
+    body.dark-theme .markdown-alert-caution { border-left-color: #cf222e !important; }
+    body.dark-theme .markdown-alert-caution .markdown-alert-title { color: #cf222e !important; }
+
+    .lab-image-wrap img,
+    body.dark-theme .lab-image-wrap img {
+        border-color: #e0e0e0 !important;
+        background-color: #ffffff !important;
+        box-shadow: none !important;
     }
 }
 
@@ -545,10 +687,19 @@ pre {
     padding: 16px;
     padding-top: 36px; /* Extra space for the copy button */
     border-radius: 6px;
-    overflow: auto;
+    overflow-x: hidden;
     position: relative;
     white-space: pre-wrap; /* Wraps the code */
+    overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+pre code,
+pre code.hljs {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    overflow-x: visible !important;
 }
 
 .copy-btn {

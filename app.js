@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fontDecrease = document.getElementById('font-decrease');
     const fontIncrease = document.getElementById('font-increase');
     const themeToggle = document.getElementById('theme-toggle');
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
     const openLabBtn = document.getElementById('open-lab-btn');
     const openLabModal = document.getElementById('open-lab-modal');
     const openLabClose = document.getElementById('open-lab-close');
@@ -247,6 +248,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const headings = contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        const firstH1 = contentDiv.querySelector('h1');
+        const slugTitle = firstH1 && firstH1.textContent.trim()
+            ? firstH1.textContent
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)/g, '')
+            : '';
+        document.title = slugTitle || 'lab-viewer';
         tocList.innerHTML = '';
         headings.forEach((heading, index) => {
             if (!heading.id) {
@@ -301,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (openLabBtn) openLabBtn.addEventListener('click', () => openOpenLabModal());
+    if (exportPdfBtn) exportPdfBtn.addEventListener('click', prepareAndPrintPdf);
     if (openLabClose) openLabClose.addEventListener('click', closeOpenLabModal);
     if (openLabCancel) openLabCancel.addEventListener('click', closeOpenLabModal);
     if (openLabSubmit) openLabSubmit.addEventListener('click', submitOpenLab);
@@ -317,6 +328,98 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    let savedCodeState = [];
+    let isPrinting = false;
+
+    function expandTabsInElement(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        let node = walker.nextNode();
+        while (node) {
+            if (node.nodeValue && node.nodeValue.includes('\t')) {
+                textNodes.push(node);
+            }
+            node = walker.nextNode();
+        }
+        const originals = [];
+        textNodes.forEach((textNode) => {
+            originals.push({ node: textNode, value: textNode.nodeValue });
+            textNode.nodeValue = textNode.nodeValue.replace(/\t/g, '    ');
+        });
+        return originals;
+    }
+
+    function preparePrintCodeBlocks() {
+        savedCodeState = [];
+        const preBlocks = contentDiv.querySelectorAll('pre');
+        preBlocks.forEach((pre) => {
+            const codeEl = pre.querySelector('code') || pre;
+            const textRestores = expandTabsInElement(codeEl);
+            savedCodeState.push({
+                textRestores
+            });
+        });
+    }
+
+    function cleanupPrintState() {
+        savedCodeState.forEach(({ textRestores }) => {
+            textRestores.forEach(({ node, value }) => {
+                node.nodeValue = value;
+            });
+        });
+        savedCodeState = [];
+        if (exportPdfBtn) exportPdfBtn.textContent = '🖨️';
+        isPrinting = false;
+    }
+
+    async function prepareAndPrintPdf() {
+        if (isPrinting || !contentDiv) return;
+        isPrinting = true;
+        if (exportPdfBtn) exportPdfBtn.textContent = '⏳';
+
+        collapseExpandedLabImages();
+        sideMenu.classList.remove('open');
+
+        const images = Array.from(contentDiv.querySelectorAll('img'));
+        images.forEach((img) => {
+            const src = img.getAttribute('src');
+            if (src) {
+                try {
+                    img.src = new URL(src, window.location.href).href;
+                } catch (_) {
+                    // Keep current src if resolution fails
+                }
+            }
+            img.loading = 'eager';
+            img.decoding = 'sync';
+        });
+
+        const imagePromises = images.map((img) => {
+            if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+            return new Promise((resolve) => {
+                img.onload = resolve;
+                img.onerror = resolve;
+            });
+        });
+
+        await Promise.all(imagePromises);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        preparePrintCodeBlocks();
+
+        if (exportPdfBtn) exportPdfBtn.textContent = '🖨️';
+        window.print();
+    }
+
+    window.addEventListener('afterprint', cleanupPrintState);
+
+    document.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key && event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            prepareAndPrintPdf();
+        }
+    });
 
     const urlParams = new URLSearchParams(window.location.search);
     const initialLab = urlParams.get('lab');
